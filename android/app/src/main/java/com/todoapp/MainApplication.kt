@@ -1,4 +1,4 @@
-package com.todoapptemp
+package com.todoapp
 
 import android.app.Application
 import com.facebook.react.PackageList
