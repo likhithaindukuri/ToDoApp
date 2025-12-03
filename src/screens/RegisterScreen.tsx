@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import { useNavigation } from '@react-navigation/native';
+import styles from '../styles/RegisterScreenStyles';
 
 export default function RegisterScreen() {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleRegister = async () => {
     if (!email || !password) {
@@ -16,8 +18,11 @@ export default function RegisterScreen() {
 
     try {
       await auth().createUserWithEmailAndPassword(email, password);
-      Alert.alert("Success", "Account created successfully!");
-      navigation.navigate("Login" as never);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        navigation.navigate("Login" as never);
+      }, 2000);
     } catch (error: any) {
       Alert.alert("Registration Failed", error.message);
     }
@@ -27,6 +32,7 @@ export default function RegisterScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.background}>
         <View style={styles.topCircle} />
@@ -35,9 +41,6 @@ export default function RegisterScreen() {
       
       <View style={styles.content}>
         <View style={styles.brandContainer}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.brandIcon}>✓</Text>
-          </View>
           <Text style={styles.brandTitle}>ToDoApp</Text>
           <Text style={styles.brandSubtitle}>Create your account to get started</Text>
         </View>
@@ -47,10 +50,7 @@ export default function RegisterScreen() {
           <Text style={styles.formSubtitle}>Sign up to start organizing</Text>
 
           <View style={styles.inputContainer}>
-            <View style={styles.inputLabelContainer}>
-              <Text style={styles.inputIcon}>📧</Text>
-              <Text style={styles.inputLabel}>Email Address</Text>
-            </View>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
@@ -63,10 +63,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <View style={styles.inputLabelContainer}>
-              <Text style={styles.inputIcon}>🔒</Text>
-              <Text style={styles.inputLabel}>Password</Text>
-            </View>
+            <Text style={styles.inputLabel}>Password</Text>
             <TextInput
               style={styles.input}
               placeholder="Create a password"
@@ -91,6 +88,15 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {showSuccess && (
+        <View style={styles.successContainer}>
+          <View style={styles.successMessage}>
+            <Text style={styles.successIcon}>✓</Text>
+            <Text style={styles.successText}>Account created successfully!</Text>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -128,26 +134,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     zIndex: 1,
+    maxHeight: '100%',
   },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 48,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  brandIcon: {
-    fontSize: 40,
-    color: '#FFFFFF',
-    fontWeight: '800',
+    marginBottom: 32,
   },
   brandTitle: {
     fontSize: 42,
@@ -169,12 +160,13 @@ const styles = StyleSheet.create({
   formContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
-    padding: 28,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 12,
+    maxHeight: '80%',
   },
   formTitle: {
     fontSize: 30,
@@ -190,22 +182,14 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   inputContainer: {
-    marginBottom: 22,
-  },
-  inputLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  inputIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '700',
     color: '#374151',
     letterSpacing: 0.3,
+    marginBottom: 8,
   },
   input: {
     height: 56,
@@ -258,6 +242,41 @@ const styles = StyleSheet.create({
   linkTextBold: {
     color: '#6366F1',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  successContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+  },
+  successMessage: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  successIcon: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  successText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

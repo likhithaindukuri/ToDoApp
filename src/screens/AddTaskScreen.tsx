@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Platform, ScrollView, KeyboardAvoidingView, FlatList } from 'react-native';
 import { addTask } from '../services/firestore';
 import auth from '@react-native-firebase/auth';
+import styles from '../styles/AddTaskScreenStyles';
 
 export default function AddTaskScreen({ navigation }: any) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadlineDate, setDeadlineDate] = useState(''); // Format: dd mm yyyy
   const [priority, setPriority] = useState('');
+  const [category, setCategory] = useState('');
+  const [titleError, setTitleError] = useState('');
+  const [priorityError, setPriorityError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Parse date string in "dd mm yyyy" format
   const parseDate = (dateStr: string): Date | null => {
@@ -52,8 +57,19 @@ export default function AddTaskScreen({ navigation }: any) {
 
 
   const handleAddTask = async () => {
-    if (!title || !priority) {
-      Alert.alert("Error", "Title & Priority are required");
+    // Reset errors
+    setTitleError('');
+    setPriorityError('');
+    
+    // Validate title
+    if (!title.trim()) {
+      setTitleError('Title is required');
+      return;
+    }
+    
+    // Validate priority
+    if (!priority) {
+      setPriorityError('Priority is required');
       return;
     }
 
@@ -74,9 +90,10 @@ export default function AddTaskScreen({ navigation }: any) {
 
     const newTask = {
       title,
-      description,
-      deadline: parsedDeadline ? parsedDeadline.toISOString() : '',
+      description: description || undefined,
+      deadline: parsedDeadline ? parsedDeadline.toISOString() : undefined,
       priority,
+      category: category || undefined,
     };
 
     try {
@@ -91,41 +108,56 @@ export default function AddTaskScreen({ navigation }: any) {
       await addTask(newTask);
       console.log('Task saved successfully');
       
-      // Show success popup and then navigate back
-      Alert.alert(
-        "Success",
-        "Task created successfully!",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // Navigate back to HomeScreen
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                navigation.navigate("Home" as never);
-              }
-            }
-          }
-        ],
-        { cancelable: false }
-      );
+      // Reset form - clear all fields immediately
+      setTitle('');
+      setDescription('');
+      setDeadlineDate('');
+      setPriority('');
+      setCategory('');
+      setTitleError('');
+      setPriorityError('');
+      
+      // Show success message on interface
+      setShowSuccess(true);
+      
+      // Hide success message and navigate back after 2 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("Home" as never);
+        }
+      }, 2000);
     } catch (err: any) {
       console.error('Error saving task:', err);
       Alert.alert("Error", err.message || "Failed to add task. Please try again.");
     }
   };
 
+  const handleClose = () => {
+    setTitle('');
+    setDescription('');
+    setDeadlineDate('');
+    setPriority('');
+    setCategory('');
+    setTitleError('');
+    setPriorityError('');
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate("Home" as never);
+    }
+  };
+
   const priorityOptions = ['Low', 'Medium', 'High'];
+  const categoryOptions = ['Work', 'Personal', 'Shopping', 'Health', 'Education', 'Other'];
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleClose} style={styles.backButton} activeOpacity={0.7}>
             <Text style={styles.backButtonIcon}>←</Text>
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
@@ -136,45 +168,43 @@ export default function AddTaskScreen({ navigation }: any) {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.contentContainer}>
         <View style={styles.formContainer}>
           <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.labelIcon}>📝</Text>
-              <Text style={styles.label}>Task Title *</Text>
-            </View>
+            <Text style={styles.label}>Task Title *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, titleError && styles.inputError]}
               placeholder="Enter task title"
               placeholderTextColor="#9CA3AF"
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(text) => {
+                setTitle(text);
+                if (titleError) setTitleError('');
+              }}
             />
+            {titleError ? <Text style={styles.errorText}>{titleError}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.labelIcon}>📄</Text>
-              <Text style={styles.label}>Description</Text>
-            </View>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Add a description (optional)"
+              style={styles.input}
+              placeholder="Add a description"
               placeholderTextColor="#9CA3AF"
               value={description}
               onChangeText={setDescription}
-              multiline
-              numberOfLines={2}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.labelIcon}>📅</Text>
-              <Text style={styles.label}>Deadline</Text>
-            </View>
+            <Text style={styles.label}>Deadline Date</Text>
             <TextInput
-              style={styles.dateInput}
+              style={styles.input}
               placeholder="dd mm yyyy"
               placeholderTextColor="#9CA3AF"
               value={deadlineDate}
@@ -185,10 +215,39 @@ export default function AddTaskScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.labelIcon}>⭐</Text>
-              <Text style={styles.label}>Priority *</Text>
-            </View>
+            <Text style={styles.label}>Category</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryScrollView}
+              contentContainerStyle={styles.categoryContainer}
+            >
+              {categoryOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.categoryOption,
+                    category === option && styles.categoryOptionActive,
+                    category === option && {
+                      backgroundColor: '#6366F1'
+                    }
+                  ]}
+                  onPress={() => setCategory(option)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.categoryText,
+                    category === option && styles.categoryTextActive
+                  ]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Priority *</Text>
             <View style={styles.priorityContainer}>
               {priorityOptions.map((option) => (
                 <TouchableOpacity
@@ -202,7 +261,10 @@ export default function AddTaskScreen({ navigation }: any) {
                         option === 'Medium' ? '#F59E0B' : '#10B981'
                     }
                   ]}
-                  onPress={() => setPriority(option)}
+                  onPress={() => {
+                    setPriority(option);
+                    if (priorityError) setPriorityError('');
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={[
@@ -214,195 +276,27 @@ export default function AddTaskScreen({ navigation }: any) {
                 </TouchableOpacity>
               ))}
             </View>
+            {priorityError ? <Text style={styles.errorText}>{priorityError}</Text> : null}
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleAddTask} activeOpacity={0.8}>
-            <Text style={styles.saveButtonText}>Save Task</Text>
-            <Text style={styles.saveButtonIcon}>✓</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose} activeOpacity={0.8}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={handleAddTask} activeOpacity={0.8}>
+              <Text style={styles.saveButtonText}>Save Task</Text>
+            </TouchableOpacity>
+          </View>
+
+          {showSuccess && (
+            <View style={styles.successMessage}>
+              <Text style={styles.successIcon}>✓</Text>
+              <Text style={styles.successText}>Task created successfully!</Text>
+            </View>
+          )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    backgroundColor: '#6366F1',
-    paddingTop: 50,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  backButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#E0E7FF',
-    fontWeight: '500',
-  },
-  placeholder: {
-    width: 44,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 24,
-  },
-  formContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  inputGroup: {
-    marginBottom: 26,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  labelIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#374151',
-    letterSpacing: 0.3,
-  },
-  input: {
-    height: 58,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    color: '#1F2937',
-    backgroundColor: '#F9FAFB',
-    fontWeight: '500',
-  },
-  textArea: {
-    height: 70,
-    textAlignVertical: 'top',
-    paddingTop: 14,
-  },
-  dateInput: {
-    height: 50,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    backgroundColor: '#F9FAFB',
-    fontSize: 14,
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  priorityContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  priorityOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  priorityOptionActive: {
-    borderWidth: 2,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  priorityText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B7280',
-    letterSpacing: 0.3,
-  },
-  priorityTextActive: {
-    color: '#FFFFFF',
-  },
-  saveButton: {
-    backgroundColor: '#6366F1',
-    padding: 20,
-    borderRadius: 18,
-    alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  saveButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-});

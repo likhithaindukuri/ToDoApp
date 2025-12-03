@@ -396,10 +396,7 @@ export default function HomeScreen({ navigation }: any) {
         onPress={() => navigation.navigate("AddTask")}
         activeOpacity={0.8}
       >
-        <View style={styles.addButtonContent}>
-          <Text style={styles.addButtonIcon}>+</Text>
-          <Text style={styles.addButtonText}>Add New Task</Text>
-        </View>
+        <Text style={styles.addButtonText}>Add Task</Text>
       </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>
@@ -732,29 +729,19 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: '#6366F1',
     margin: 24,
-    padding: 20,
-    borderRadius: 18,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  addButtonContent: {
-    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-  },
-  addButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
